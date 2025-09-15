@@ -20,6 +20,7 @@ import (
 	"github.com/google/osv-scalibr/inventory/vex"
 	"github.com/google/osv-scalibr/plugin"
 	"github.com/google/osv-scalibr/purl"
+	"github.com/opencontainers/go-digest"
 )
 
 // Extractor is the common interface of inventory extraction plugins.
@@ -35,15 +36,33 @@ type SourceCodeIdentifier struct {
 	Commit string
 }
 
-// LayerDetails stores details about the layer a package was found in.
-type LayerDetails struct {
-	Index  int
-	DiffID string
-	// The layer chain ID (sha256 hash) of the layer in the container image.
-	// https://github.com/opencontainers/image-spec/blob/main/config.md#layer-chainid
-	ChainID     string
-	Command     string
-	InBaseImage bool
+// ContainerImageMetadata stores metadata about a container image.
+type ContainerImageMetadata struct {
+	Index int
+	// LayerMetadata stores metadata about the layers in the container image.
+	// Currently this does not store any empty layers.
+	LayerMetadata []*LayerMetadata
+	BaseImages    [][]*BaseImageDetails
+}
+
+// LayerMetadata stores metadata about a layer in a container image.
+type LayerMetadata struct {
+	ParentContainer *ContainerImageMetadata
+
+	Index          int
+	DiffID         digest.Digest
+	ChainID        digest.Digest
+	Command        string
+	IsEmpty        bool
+	BaseImageIndex int
+}
+
+// BaseImageDetails stores details about a base image.
+type BaseImageDetails struct {
+	Repository string
+	Registry   string
+	Plugin     string
+	ChainID    digest.Digest
 }
 
 // Package is an instance of a software package or library found by the extractor.
@@ -74,7 +93,7 @@ type Package struct {
 	// Signals to indicate that specific vulnerabilities are not applicable to this package.
 	ExploitabilitySignals []*vex.PackageExploitabilitySignal
 	// Details about the layer that the package was attributed to.
-	LayerDetails *LayerDetails
+	LayerMetadata *LayerMetadata
 	// The additional data found in the package.
 	Metadata any
 	// Licenses information of this package
